@@ -16,6 +16,7 @@ export interface AnalyticsData {
   goldSetId: number;
   caption: string;
   viewCount: number;
+  uniqueUserCount: number;
   channelMessageId: number;
   channelId: string;
 }
@@ -103,6 +104,17 @@ export class GoldSetService {
             },
           },
         },
+        priceChecks: {
+          where: {
+            checkedAt: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+          select: {
+            userId: true,
+          },
+        },
       },
       orderBy: {
         priceChecks: {
@@ -112,12 +124,18 @@ export class GoldSetService {
       take: limit,
     });
 
-    return results.map((result) => ({
-      goldSetId: result.id,
-      caption: result.caption,
-      viewCount: result._count.priceChecks,
-      channelMessageId: result.channelMessageId,
-      channelId: result.channelId,
-    }));
+    return results.map((result) => {
+      // Calculate unique user count
+      const uniqueUsers = new Set(result.priceChecks.map(pc => pc.userId.toString()));
+
+      return {
+        goldSetId: result.id,
+        caption: result.caption,
+        viewCount: result._count.priceChecks,
+        uniqueUserCount: uniqueUsers.size,
+        channelMessageId: result.channelMessageId,
+        channelId: result.channelId,
+      };
+    });
   }
 }

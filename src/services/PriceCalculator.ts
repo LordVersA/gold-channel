@@ -1,48 +1,79 @@
+import { ChannelConfigService } from './ChannelConfigService';
+import { toPersianNumber } from '../utils/formatters';
+
 /**
  * Price Calculator Service
  * Calculates gold set prices based on weight and spot price
- * Formula for normal users: weight × spot_price + 19% + 7%
- * Formula for collaborators (hamkar): weight × spot_price + 16% + 7%
+ * Formula: (weight × spot_price) × (1 + tax + laborFee + sellingProfit)
+ * Percentages are fetched from channel configuration
  */
 
 export class PriceCalculator {
   /**
-   * Calculate normal (non-collaborator) price
-   * Formula: weight × spot_price + 19% + 7%
+   * Calculate normal (non-collaborator) price using channel config
+   * Formula: (weight × spot_price) × (1 + tax + laborFee + sellingProfit)
    */
-  static calculateNormalPrice(weightInGrams: number, spotPricePerGram: number): number {
+  static async calculateNormalPrice(
+    weightInGrams: number,
+    spotPricePerGram: number,
+    channelId: string
+  ): Promise<number> {
+    const config = await ChannelConfigService.getOrCreateConfig(channelId);
     const basePrice = weightInGrams * spotPricePerGram;
-    const withFirstMarkup = basePrice * 1.19; // +19%
-    const finalPrice = withFirstMarkup * 1.07; // +7%
+    const totalMarkup = 1 + config.customerTax + config.customerLaborFee + config.customerSellingProfit;
+    const finalPrice = basePrice * totalMarkup;
     return finalPrice;
   }
 
   /**
-   * Calculate collaborator price
-   * Formula: weight × spot_price + 16% + 7%
+   * Calculate collaborator price using channel config
+   * Formula: (weight × spot_price) × (1 + tax + laborFee + sellingProfit)
    */
-  static calculateCollaboratorPrice(weightInGrams: number, spotPricePerGram: number): number {
+  static async calculateCollaboratorPrice(
+    weightInGrams: number,
+    spotPricePerGram: number,
+    channelId: string
+  ): Promise<number> {
+    const config = await ChannelConfigService.getOrCreateConfig(channelId);
     const basePrice = weightInGrams * spotPricePerGram;
-    const withFirstMarkup = basePrice * 1.16; // +16%
-    const finalPrice = withFirstMarkup * 1.07; // +7%
+    const totalMarkup = 1 + config.collabTax + config.collabLaborFee + config.collabSellingProfit;
+    const finalPrice = basePrice * totalMarkup;
     return finalPrice;
   }
 
   /**
-   * Format price with thousands separator and 2 decimal places
+   * Calculate both customer and collaborator prices
+   * Returns object with both prices for display to collaborators
+   */
+  static async calculateBothPrices(
+    weightInGrams: number,
+    spotPricePerGram: number,
+    channelId: string
+  ): Promise<{ customerPrice: number; collabPrice: number }> {
+    const [customerPrice, collabPrice] = await Promise.all([
+      this.calculateNormalPrice(weightInGrams, spotPricePerGram, channelId),
+      this.calculateCollaboratorPrice(weightInGrams, spotPricePerGram, channelId),
+    ]);
+
+    return { customerPrice, collabPrice };
+  }
+
+  /**
+   * Format price with thousands separator and 2 decimal places (Persian numbers)
    */
   static formatPrice(price: number): string {
-    return new Intl.NumberFormat('en-US', {
+    const formatted = new Intl.NumberFormat('en-US', {
       style: 'decimal',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(price);
+    return toPersianNumber(formatted);
   }
 
   /**
-   * Format weight with proper units
+   * Format weight with proper units (Persian numbers)
    */
   static formatWeight(grams: number): string {
-    return `${grams}گرم`;
+    return `${toPersianNumber(grams)}گرم`;
   }
 }

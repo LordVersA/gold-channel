@@ -3,6 +3,8 @@
  * All user-facing bot messages in Persian
  */
 
+import { toPersianNumber } from './formatters';
+
 export const Messages = {
   // Welcome messages
   welcome: 'خوش آمدید! من ربات مدیریت ست های طلا هستم.',
@@ -69,12 +71,18 @@ export const Messages = {
   broadcastCancel: 'لغو',
   broadcastSent: 'پیام با موفقیت ارسال شد!',
   broadcastResult: (successCount: number, failCount: number) => {
-    let message = `✅ پیام به ${successCount} همکار ارسال شد.`;
+    let message = `✅ پیام به ${toPersianNumber(successCount)} همکار ارسال شد.`;
     if (failCount > 0) {
-      message += `\n❌ ارسال به ${failCount} همکار ناموفق بود.`;
+      message += `\n❌ ارسال به ${toPersianNumber(failCount)} همکار ناموفق بود.`;
     }
     return message;
   },
+
+  // Collaborator management messages
+  collaboratorsListTitle: '👥 لیست همکاران',
+  noCollaborators: 'هیچ همکاری ثبت نشده است.',
+  collaboratorDeleted: (name: string) => `✅ همکار ${name} حذف شد.`,
+  collaboratorNotFound: 'همکار مورد نظر یافت نشد.',
 
   // Help message
   help: `
@@ -84,16 +92,26 @@ export const Messages = {
 /start - شروع کار با ربات
 /setchannel - تنظیم کانال
 /hamkar - ایجاد لینک دعوت همکار
+/listhamkar - مشاهده لیست همکاران
 /addadmin - ایجاد لینک دعوت ادمین
 /pmhamkar - ارسال پیام به همه همکاران
+/amar - مشاهده آمار بازدید (روز، هفته، ماه)
 /help - نمایش این راهنما
+
+تنظیمات قیمت‌گذاری:
+/settax <customer|collab> <درصد> - تنظیم مالیات
+/setfee <customer|collab> <درصد> - تنظیم اجرت
+/setprofit <customer|collab> <درصد> - تنظیم سود فروشنده
+/viewpricing - مشاهده تنظیمات فعلی قیمت‌گذاری
 
 برای ایجاد ست طلا:
 1. عکس‌های ست را ارسال کنید
-2. وزن را وارد کنید
-3. کپشن را اضافه کنید
+2. کپشن را اضافه کنید
+3. وزن را وارد کنید
 4. پیش‌نمایش را بررسی کنید
 5. نهایی کردن یا لغو
+
+نکته: قیمت مشتریان و همکاران بر اساس تنظیمات شما محاسبه می‌شود.
   `.trim(),
 
   // Analytics report
@@ -102,5 +120,41 @@ export const Messages = {
   topViewedSets: '🏆 پربازدیدترین ست‌های طلا:',
   noViews: 'هیچ بازدیدی در این بازه زمانی ثبت نشده است.',
   viewCount: (caption: string, views: number, link: string) =>
-    `${caption} - ${views} بازدید\n🔗 ${link}`,
+    `${caption} - ${toPersianNumber(views)} بازدید\n🔗 ${link}`,
+  viewCountWithUsers: (caption: string, views: number, uniqueUsers: number, link: string) =>
+    `${caption} - ${toPersianNumber(views)} بازدید (${toPersianNumber(uniqueUsers)} نفر)\n🔗 ${link}`,
+
+  // Statistics report (/amar command)
+  statsReportTitle: '📊 آمار بازدید ست‌های طلا',
+  statsDayTitle: '📅 روز گذشته (۲۴ ساعت):',
+  statsWeekTitle: '📅 هفته گذشته (۷ روز):',
+  statsMonthTitle: '📅 ماه گذشته (۳۰ روز):',
+
+  // Pricing configuration messages
+  setTaxUsage: 'استفاده: /settax <customer|collab> <درصد>\n\nمثال: /settax customer 5',
+  setFeeUsage: 'استفاده: /setfee <customer|collab> <درصد>\n\nمثال: /setfee customer 19',
+  setProfitUsage: 'استفاده: /setprofit <customer|collab> <درصد>\n\nمثال: /setprofit customer 7',
+  invalidPricingType: 'نوع نامعتبر است. لطفاً از customer یا collab استفاده کنید.',
+  invalidPercentage: 'درصد نامعتبر است. لطفاً یک عدد بین 0 تا 100 وارد کنید.',
+  taxUpdated: (type: string, percentage: number) =>
+    `✅ مالیات ${type === 'customer' ? 'مشتری' : 'همکار'} به ${toPersianNumber(percentage)}٪ تغییر یافت.`,
+  feeUpdated: (type: string, percentage: number) =>
+    `✅ اجرت ${type === 'customer' ? 'مشتری' : 'همکار'} به ${toPersianNumber(percentage)}٪ تغییر یافت.`,
+  profitUpdated: (type: string, percentage: number) =>
+    `✅ سود فروشنده ${type === 'customer' ? 'مشتری' : 'همکار'} به ${toPersianNumber(percentage)}٪ تغییر یافت.`,
+
+  // Pricing display
+  viewPricingTitle: '💰 تنظیمات قیمت‌گذاری',
+  customerPricing: (tax: number, fee: number, profit: number, total: number) =>
+    `👤 قیمت‌گذاری مشتری:\n├ مالیات: ${toPersianNumber(tax)}٪\n├ اجرت: ${toPersianNumber(fee)}٪\n├ سود فروشنده: ${toPersianNumber(profit)}٪\n└ مجموع: ${toPersianNumber(total)}٪`,
+  collabPricing: (tax: number, fee: number, profit: number, total: number) =>
+    `👥 قیمت‌گذاری همکار:\n├ مالیات: ${toPersianNumber(tax)}٪\n├ اجرت: ${toPersianNumber(fee)}٪\n├ سود فروشنده: ${toPersianNumber(profit)}٪\n└ مجموع: ${toPersianNumber(total)}٪`,
+
+  // Dual price display for collaborators
+  pricePopupCollab: (date: string, weight: string, goldPrice: string, tax: number, fee: number, profit: number, collabTotal: string, customerTotal: string) =>
+    `🕐 زمان درخواست: ${date}\n⚖️ وزن: ${weight}\n💰 قیمت گرم طلا: ${goldPrice}\n😍 مالیات: ${toPersianNumber(tax)} درصد\n⚒️ اجرت: ${toPersianNumber(fee)} درصد\n💰 سود فروشنده: ${toPersianNumber(profit)} درصد\n\n👥 قیمت شما: ${collabTotal}\n👤 قیمت مشتری: ${customerTotal}`,
+
+  // Simple price display for customers
+  pricePopupCustomer: (date: string, weight: string, goldPrice: string, tax: number, fee: number, profit: number, total: string) =>
+    `🕐 زمان درخواست: ${date}\n⚖️ وزن: ${weight}\n💰 قیمت گرم طلا: ${goldPrice}\n😍 مالیات: ${toPersianNumber(tax)} درصد\n⚒️ اجرت: ${toPersianNumber(fee)} درصد\n💰 سود فروشنده: ${toPersianNumber(profit)} درصد\n\n✨ قیمت نهایی: ${total}`,
 };

@@ -3,12 +3,14 @@ import { GoldPriceService } from '../services/GoldPriceService';
 import { GoldSetService } from '../services/GoldSetService';
 import { PriceCalculator } from '../services/PriceCalculator';
 import { AdminService } from '../services/AdminService';
+import { ChannelConfigService } from '../services/ChannelConfigService';
 import { getUserIdBigInt } from '../utils/telegram';
 import { formatDateTime, formatCurrency, formatWeight } from '../utils/formatters';
 import { Messages } from '../utils/messages';
 import { Markup } from 'telegraf';
 import { clearSession } from '../middleware/session';
 import { handleBroadcastSubmit, handleBroadcastCancel } from './pmhamkar';
+import { handlePaginationCallback, handleDeleteCollaboratorCallback } from './listhamkar';
 
 /**
  * Handle callback queries from inline buttons
@@ -25,26 +27,62 @@ export async function handlePreviewPrice(ctx: BotContext, draftId: string) {
   }
 
   try {
+    // Get admin's channel for config
+    const userId = getUserIdBigInt(ctx);
+    if (!userId) {
+      await ctx.answerCbQuery(Messages.errorGeneric);
+      return;
+    }
+
+    const admin = await AdminService.getAdmin(userId);
+    if (!admin) {
+      await ctx.answerCbQuery('کانال تنظیم نشده است.');
+      return;
+    }
+
     // Get spot price
     const spotPrice = await GoldPriceService.getCachedPrice();
 
-    // Calculate prices
-    const normalPrice = PriceCalculator.calculateNormalPrice(session.albumWeight, spotPrice);
-    const collabPrice = PriceCalculator.calculateCollaboratorPrice(session.albumWeight, spotPrice);
+    // Get pricing config
+    const pricingConfig = await ChannelConfigService.getPricingConfig(admin.channelId);
 
     // Check if user is collaborator
     const isCollab = ctx.isCollaborator || false;
 
-    // Format popup message
-    const message = Messages.pricePopup(
-      formatDateTime(new Date()),
-      formatWeight(session.albumWeight),
-      formatCurrency(spotPrice),
-      formatCurrency(spotPrice),
-      formatCurrency(normalPrice),
-      isCollab,
-      isCollab ? formatCurrency(collabPrice) : undefined
-    );
+    // Calculate prices using channel config
+    let message: string;
+    if (isCollab) {
+      const prices = await PriceCalculator.calculateBothPrices(
+        session.albumWeight,
+        spotPrice,
+        admin.channelId
+      );
+      message = Messages.pricePopupCollab(
+        formatDateTime(new Date()),
+        formatWeight(session.albumWeight),
+        formatCurrency(spotPrice),
+        pricingConfig.collab.tax,
+        pricingConfig.collab.laborFee,
+        pricingConfig.collab.sellingProfit,
+        formatCurrency(prices.collabPrice),
+        formatCurrency(prices.customerPrice)
+      );
+    } else {
+      const customerPrice = await PriceCalculator.calculateNormalPrice(
+        session.albumWeight,
+        spotPrice,
+        admin.channelId
+      );
+      message = Messages.pricePopupCustomer(
+        formatDateTime(new Date()),
+        formatWeight(session.albumWeight),
+        formatCurrency(spotPrice),
+        pricingConfig.customer.tax,
+        pricingConfig.customer.laborFee,
+        pricingConfig.customer.sellingProfit,
+        formatCurrency(customerPrice)
+      );
+    }
 
     await ctx.answerCbQuery(message, { show_alert: true });
   } catch (error) {
@@ -168,29 +206,49 @@ export async function handleChannelPrice(ctx: BotContext, goldSetId: string) {
     // Get spot price
     const spotPrice = await GoldPriceService.getCachedPrice();
 
-    // Calculate normal price
-    const normalPrice = PriceCalculator.calculateNormalPrice(goldSet.weight, spotPrice);
+    // Get pricing config
+    const pricingConfig = await ChannelConfigService.getPricingConfig(goldSet.channelId);
 
     // Check if user is collaborator
     const isCollab = ctx.isCollaborator || false;
-    let collabPrice: number | undefined;
+
+    // Calculate prices using channel config
+    let message: string;
     if (isCollab) {
-      collabPrice = PriceCalculator.calculateCollaboratorPrice(goldSet.weight, spotPrice);
+      const prices = await PriceCalculator.calculateBothPrices(
+        goldSet.weight,
+        spotPrice,
+        goldSet.channelId
+      );
+      message = Messages.pricePopupCollab(
+        formatDateTime(new Date()),
+        formatWeight(goldSet.weight),
+        formatCurrency(spotPrice),
+        pricingConfig.collab.tax,
+        pricingConfig.collab.laborFee,
+        pricingConfig.collab.sellingProfit,
+        formatCurrency(prices.collabPrice),
+        formatCurrency(prices.customerPrice)
+      );
+    } else {
+      const customerPrice = await PriceCalculator.calculateNormalPrice(
+        goldSet.weight,
+        spotPrice,
+        goldSet.channelId
+      );
+      message = Messages.pricePopupCustomer(
+        formatDateTime(new Date()),
+        formatWeight(goldSet.weight),
+        formatCurrency(spotPrice),
+        pricingConfig.customer.tax,
+        pricingConfig.customer.laborFee,
+        pricingConfig.customer.sellingProfit,
+        formatCurrency(customerPrice)
+      );
     }
 
     // Log price check
     await GoldSetService.logPriceCheck(userId, goldSet.id);
-
-    // Format popup message
-    const message = Messages.pricePopup(
-      formatDateTime(new Date()),
-      formatWeight(goldSet.weight),
-      formatCurrency(spotPrice),
-      formatCurrency(spotPrice),
-      formatCurrency(normalPrice),
-      isCollab,
-      isCollab ? formatCurrency(collabPrice!) : undefined
-    );
 
     await ctx.answerCbQuery(message, { show_alert: true });
   } catch (error) {
@@ -227,5 +285,9 @@ export async function handleCallbackQuery(ctx: BotContext) {
   } else if (data.startsWith('broadcast_cancel:')) {
     const messageId = data.substring(17);
     await handleBroadcastCancel(ctx, messageId);
+  } else if (data.startsWith('hamlist:')) {
+    await handlePaginationCallback(ctx);
+  } else if (data.startsWith('delham:')) {
+    await handleDeleteCollaboratorCallback(ctx);
   }
 }

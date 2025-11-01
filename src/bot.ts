@@ -8,11 +8,17 @@ import { sessionMiddleware } from './middleware/session';
 import { handleStart } from './handlers/start';
 import { handleSetChannel, handleChannelForward } from './handlers/setchannel';
 import { handleHamkar } from './handlers/hamkar';
+import { handleListHamkar } from './handlers/listhamkar';
 import { handleAddAdmin } from './handlers/addadmin';
 import { handleHelp } from './handlers/help';
 import { handlePhoto, handleTextInput } from './handlers/album';
 import { handleCallbackQuery } from './handlers/callbacks';
 import { handlePmHamkar, handleBroadcastMessage } from './handlers/pmhamkar';
+import { handleAmar } from './handlers/amar';
+import { handleSetTax } from './handlers/settax';
+import { handleSetFee } from './handlers/setfee';
+import { handleSetProfit } from './handlers/setprofit';
+import { handleViewPricing } from './handlers/viewpricing';
 
 // Services
 import { AnalyticsService } from './services/AnalyticsService';
@@ -38,9 +44,15 @@ bot.use(authMiddleware);
 bot.command('start', handleStart);
 bot.command('setchannel', handleSetChannel);
 bot.command('hamkar', requireAdmin, handleHamkar);
+bot.command('listhamkar', requireAdmin, handleListHamkar);
 bot.command('addadmin', requireAdmin, handleAddAdmin);
 bot.command('pmhamkar', requireAdmin, handlePmHamkar);
-bot.command('help', handleHelp);
+bot.command('amar', requireAdmin, handleAmar);
+bot.command('settax', requireAdmin, handleSetTax);
+bot.command('setfee', requireAdmin, handleSetFee);
+bot.command('setprofit', requireAdmin, handleSetProfit);
+bot.command('viewpricing', requireAdmin, handleViewPricing);
+bot.command('help', requireAdmin, handleHelp);
 
 // Handle forwarded messages for channel setup
 bot.on('message', async (ctx, next) => {

@@ -17,6 +17,8 @@ export class TokenService {
 
   /**
    * Generate an invite token
+   * Collaborator tokens never expire and can be reused
+   * Admin tokens expire and are one-time use
    */
   static async generateToken(
     type: 'collab' | 'admin',
@@ -24,8 +26,15 @@ export class TokenService {
     channelId?: string
   ): Promise<string> {
     const token = this.generateUniqueToken();
+
+    // Collaborator tokens never expire (far future date)
+    // Admin tokens expire after configured days
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + config.inviteTokenExpiry);
+    if (type === 'collab') {
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100); // Never expire (100 years)
+    } else {
+      expiresAt.setDate(expiresAt.getDate() + config.inviteTokenExpiry);
+    }
 
     await prisma.inviteToken.create({
       data: {
@@ -42,7 +51,8 @@ export class TokenService {
 
   /**
    * Validate a token
-   * Returns token data if valid, null if invalid/expired/used
+   * Collaborator tokens: can be reused, never expire (in practice)
+   * Admin tokens: one-time use, expire after configured days
    */
   static async validateToken(token: string): Promise<{
     valid: boolean;
@@ -57,10 +67,13 @@ export class TokenService {
       return { valid: false };
     }
 
-    if (tokenData.used) {
+    // Collaborator tokens can be reused (skip 'used' check)
+    // Admin tokens are one-time use only
+    if (tokenData.type === 'admin' && tokenData.used) {
       return { valid: false };
     }
 
+    // Check expiration
     if (tokenData.expiresAt < new Date()) {
       return { valid: false };
     }
@@ -74,11 +87,16 @@ export class TokenService {
 
   /**
    * Mark a token as used
+   * Only applies to admin tokens (collaborator tokens can be reused)
    */
-  static async consumeToken(token: string): Promise<void> {
-    await prisma.inviteToken.update({
-      where: { token },
-      data: { used: true },
-    });
+  static async consumeToken(token: string, type: 'collab' | 'admin'): Promise<void> {
+    // Only mark admin tokens as used
+    if (type === 'admin') {
+      await prisma.inviteToken.update({
+        where: { token },
+        data: { used: true },
+      });
+    }
+    // Collaborator tokens are never marked as used (can be reused)
   }
 }

@@ -5,6 +5,7 @@ import { buildChannelPostLink } from '../utils/telegram';
 import { Messages } from '../utils/messages';
 import { Telegraf } from 'telegraf';
 import { BotContext } from '../types/context';
+import { toPersianNumber } from '../utils/formatters';
 
 /**
  * Analytics Service
@@ -86,6 +87,7 @@ export class AnalyticsService {
     goldSetId: number;
     caption: string;
     viewCount: number;
+    uniqueUserCount: number;
     channelMessageId: number;
     channelId: string;
   }>): string {
@@ -98,7 +100,7 @@ export class AnalyticsService {
     topSets.forEach((set, index) => {
       const link = buildChannelPostLink(set.channelId, set.channelMessageId);
       const caption = set.caption.substring(0, 50) + (set.caption.length > 50 ? '...' : '');
-      report += `${index + 1}. ${Messages.viewCount(caption, set.viewCount, link)}\n\n`;
+      report += `${toPersianNumber(index + 1)}. ${Messages.viewCountWithUsers(caption, set.viewCount, set.uniqueUserCount, link)}\n\n`;
     });
 
     return report;

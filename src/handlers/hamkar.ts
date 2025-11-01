@@ -24,7 +24,7 @@ export async function handleHamkar(ctx: BotContext) {
     const deepLink = buildDeepLink(botInfo.username, `collab-${token}`);
 
     // Send the link to admin
-    await ctx.reply(`لینک دعوت همکار:\n\n${deepLink}\n\nاین لینک برای ${process.env.INVITE_TOKEN_EXPIRY || 7} روز معتبر است.`);
+    await ctx.reply(`لینک دعوت همکار:\n\n${deepLink}\n\nاین لینک هیچ‌وقت منقضی نمی‌شود و برای تعداد نامحدود کاربر قابل استفاده است.`);
   } catch (error) {
     console.error('Error generating collaborator link:', error);
     await ctx.reply(Messages.errorGeneric);

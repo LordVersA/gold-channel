@@ -37,7 +37,7 @@ export const config: Config = {
   databaseUrl: getEnvVar('DATABASE_URL', 'file:./dev.db'),
   goldApiUrl: getEnvVar('GOLD_API_URL', 'https://api.example.com/gold-price'),
   goldApiKey: getEnvVar('GOLD_API_KEY', ''),
-  priceCacheTtl: getEnvNumber('PRICE_CACHE_TTL', 120),
+  priceCacheTtl: getEnvNumber('PRICE_CACHE_TTL', 60),
   defaultDiscountPercentage: getEnvNumber('DEFAULT_DISCOUNT_PERCENTAGE', 10),
   timezone: getEnvVar('TIMEZONE', 'Europe/Zurich'),
   inviteTokenExpiry: getEnvNumber('INVITE_TOKEN_EXPIRY', 7),

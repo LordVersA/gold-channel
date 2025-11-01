@@ -76,8 +76,8 @@ async function handleCollaboratorRegistration(
   const username = ctx.from?.username;
   await CollaboratorService.addCollaborator(userId, username);
 
-  // Mark token as used
-  await TokenService.consumeToken(token);
+  // Mark token as used (but collaborator tokens are reusable)
+  await TokenService.consumeToken(token, 'collab');
 
   await ctx.reply(Messages.collaboratorRegistered);
 }
@@ -114,8 +114,8 @@ async function handleAdminRegistration(
   const username = ctx.from?.username;
   await AdminService.addAdmin(userId, validation.channelId, username);
 
-  // Mark token as used
-  await TokenService.consumeToken(token);
+  // Mark token as used (admin tokens are one-time use)
+  await TokenService.consumeToken(token, 'admin');
 
   await ctx.reply(Messages.adminRegistered);
 
