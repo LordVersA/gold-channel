@@ -1,0 +1,39 @@
+{
+  "name": "gold-channel",
+  "version": "1.0.0",
+  "description": "Telegram bot for managing gold set albums with live pricing",
+  "main": "dist/bot.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/bot.js",
+    "dev": "nodemon --exec ts-node src/bot.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/client": "^6.18.0",
+    "axios": "^1.13.1",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^17.2.3",
+    "moment-jalaali": "^0.10.4",
+    "prisma": "^6.18.0",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "@types/moment-jalaali": "^0.7.9",
+    "@types/node": "^24.9.2",
+    "@types/node-cron": "^3.0.11",
+    "node-cron": "^4.2.1",
+    "nodemon": "^3.1.10",
+    "pm2": "^6.0.13",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

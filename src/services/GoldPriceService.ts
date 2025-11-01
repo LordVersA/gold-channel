@@ -1,0 +1,146 @@
+import { prisma } from '../config/database';
+import { config } from '../config/config';
+import axios from 'axios';
+import https from 'https';
+
+/**
+ * Gold Price Service
+ * Handles fetching and caching of spot gold prices
+ * Fetches from tgju.org API (18-carat gold price)
+ */
+
+export class GoldPriceService {
+  /**
+   * Fetch spot price from tgju.org API
+   * Returns the current price of 18-carat gold per gram
+   */
+  private static async fetchSpotPrice(): Promise<number> {
+    try {
+      const response = await axios.get('https://api.tgju.org/v1/market/indicator/summary-table-data/geram18?length=1', {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9,fa;q=0.8',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Referer': 'https://www.tgju.org/',
+          'Connection': 'keep-alive',
+          'Sec-Fetch-Dest': 'empty',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Site': 'same-site',
+          'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+          'sec-ch-ua-mobile': '?0',
+          'sec-ch-ua-platform': '"Windows"',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        httpsAgent: new https.Agent({
+          rejectUnauthorized: true
+        }),
+        proxy: false,
+        decompress: true,
+        timeout: 10000,
+        maxRedirects: 5
+      });
+
+      // API returns object with data array: { data: [[...]], recordsTotal: number, ... }
+      // We need response.data.data[0][3] for the current price
+      const apiData = response.data?.data;
+
+      if (Array.isArray(apiData) && apiData.length > 0 && Array.isArray(apiData[0]) && apiData[0].length > 3) {
+        const priceString = apiData[0][3];
+
+        // Remove commas from the price string (e.g., "103,818,000" -> "103818000")
+        const cleanedPrice = String(priceString).replace(/,/g, '');
+        const price = parseFloat(cleanedPrice);
+
+        if (isNaN(price)) {
+          throw new Error('Invalid price format from API');
+        }
+
+        console.log(`Fetched gold price: ${price}`);
+        return price;
+      } else {
+        console.error('API response:', JSON.stringify(response.data, null, 2));
+        throw new Error('Unexpected API response format');
+      }
+    } catch (error) {
+      console.error('Error fetching gold price:', error);
+      throw new Error('Failed to fetch gold price from tgju.org');
+    }
+  }
+
+  /**
+   * Get cached price or fetch if stale
+   */
+  static async getCachedPrice(): Promise<number> {
+    // Try to get cached price
+    const cache = await prisma.priceCache.findFirst({
+      where: {
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      orderBy: {
+        fetchedAt: 'desc',
+      },
+    });
+
+    if (cache) {
+      console.log('Using cached gold price');
+      return cache.pricePerGram;
+    }
+
+    // Cache is stale or doesn't exist, fetch new price
+    try {
+      const price = await this.fetchSpotPrice();
+      await this.updateCache(price);
+      return price;
+    } catch (error) {
+      // If fetch fails, try to get last known price (even if expired)
+      const lastKnownPrice = await prisma.priceCache.findFirst({
+        orderBy: {
+          fetchedAt: 'desc',
+        },
+      });
+
+      if (lastKnownPrice) {
+        console.log('Using last known price due to API failure');
+        return lastKnownPrice.pricePerGram;
+      }
+
+      // No price available at all
+      throw new Error('Unable to fetch gold price and no cached price available');
+    }
+  }
+
+  /**
+   * Update cache with new price
+   */
+  private static async updateCache(price: number): Promise<void> {
+    const expiresAt = new Date();
+    expiresAt.setSeconds(expiresAt.getSeconds() + config.priceCacheTtl);
+
+    await prisma.priceCache.create({
+      data: {
+        pricePerGram: price,
+        expiresAt,
+      },
+    });
+
+    // Clean up old cache entries (keep last 10)
+    const allCaches = await prisma.priceCache.findMany({
+      orderBy: { fetchedAt: 'desc' },
+      skip: 10,
+    });
+
+    if (allCaches.length > 0) {
+      await prisma.priceCache.deleteMany({
+        where: {
+          id: {
+            in: allCaches.map((c) => c.id),
+          },
+        },
+      });
+    }
+  }
+}

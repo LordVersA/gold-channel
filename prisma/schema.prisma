@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Admin users who can create and publish gold sets
+model Admin {
+  id               Int      @id @default(autoincrement())
+  userId           BigInt   @unique
+  telegramUsername String?
+  channelId        String
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([channelId])
+}
+
+// Collaborators who get special pricing
+model Collaborator {
+  id               Int      @id @default(autoincrement())
+  userId           BigInt   @unique
+  telegramUsername String?
+  registeredAt     DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Invite tokens for registering collaborators and admins
+model InviteToken {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique
+  type      String // 'collab' or 'admin'
+  createdBy BigInt
+  used      Boolean   @default(false)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  channelId String?   // For admin tokens, which channel they're for
+
+  @@index([token])
+  @@index([used])
+}
+
+// Published gold sets in the channel
+model GoldSet {
+  id               Int          @id @default(autoincrement())
+  channelMessageId Int
+  weight           Float // in grams
+  caption          String
+  publishedAt      DateTime     @default(now())
+  channelId        String
+  priceChecks      PriceCheck[]
+
+  @@index([channelId])
+  @@index([channelMessageId])
+}
+
+// Log of price checks (for analytics)
+model PriceCheck {
+  id         Int      @id @default(autoincrement())
+  userId     BigInt
+  goldSetId  Int
+  checkedAt  DateTime @default(now())
+  goldSet    GoldSet  @relation(fields: [goldSetId], references: [id])
+
+  @@index([goldSetId])
+  @@index([checkedAt])
+  @@index([userId])
+}
+
+// Cache for spot gold prices
+model PriceCache {
+  id           Int      @id @default(autoincrement())
+  pricePerGram Float
+  fetchedAt    DateTime @default(now())
+  expiresAt    DateTime
+}
+
+// Configuration per channel
+model ChannelConfig {
+  id                 Int    @id @default(autoincrement())
+  channelId          String @unique
+  discountPercentage Float  @default(10)
+  cacheTtl           Int    @default(120) // in seconds
+
+  @@index([channelId])
+}
