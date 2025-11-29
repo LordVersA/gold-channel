@@ -60,37 +60,37 @@ async function showPricingEditMenu(ctx: BotContext, goldSet: any) {
   };
 
   const keyboard = Markup.inlineKeyboard([
-    // Row 1: Customer Tax, Customer Labor Fee
+    // Row 1: Maliat (Tax) - Collab Left, Customer Right
     [
-      Markup.button.callback(
-        formatButton('customerTax', pricingValues.customerTax),
-        `edit_pricing:${goldSet.id}:customerTax`
-      ),
-      Markup.button.callback(
-        formatButton('customerLaborFee', pricingValues.customerLaborFee),
-        `edit_pricing:${goldSet.id}:customerLaborFee`
-      ),
-    ],
-    // Row 2: Customer Selling Profit, Collab Tax
-    [
-      Markup.button.callback(
-        formatButton('customerSellingProfit', pricingValues.customerSellingProfit),
-        `edit_pricing:${goldSet.id}:customerSellingProfit`
-      ),
       Markup.button.callback(
         formatButton('collabTax', pricingValues.collabTax),
         `edit_pricing:${goldSet.id}:collabTax`
       ),
+      Markup.button.callback(
+        formatButton('customerTax', pricingValues.customerTax),
+        `edit_pricing:${goldSet.id}:customerTax`
+      ),
     ],
-    // Row 3: Collab Labor Fee, Collab Selling Profit
+    // Row 2: Ojrat (Labor Fee) - Collab Left, Customer Right
     [
       Markup.button.callback(
         formatButton('collabLaborFee', pricingValues.collabLaborFee),
         `edit_pricing:${goldSet.id}:collabLaborFee`
       ),
       Markup.button.callback(
+        formatButton('customerLaborFee', pricingValues.customerLaborFee),
+        `edit_pricing:${goldSet.id}:customerLaborFee`
+      ),
+    ],
+    // Row 3: Sood (Selling Profit) - Collab Left, Customer Right
+    [
+      Markup.button.callback(
         formatButton('collabSellingProfit', pricingValues.collabSellingProfit),
         `edit_pricing:${goldSet.id}:collabSellingProfit`
+      ),
+      Markup.button.callback(
+        formatButton('customerSellingProfit', pricingValues.customerSellingProfit),
+        `edit_pricing:${goldSet.id}:customerSellingProfit`
       ),
     ],
     // Row 4: Reset button
