@@ -6,7 +6,7 @@ import { AdminService } from '../services/AdminService';
 import { ChannelConfigService } from '../services/ChannelConfigService';
 import { getUserIdBigInt } from '../utils/telegram';
 import { formatDateTime, formatCurrency, formatWeight } from '../utils/formatters';
-import { Messages } from '../utils/messages';
+import { Messages, getPersianFieldName } from '../utils/messages';
 import { Markup } from 'telegraf';
 import { clearSession } from '../middleware/session';
 import { handleBroadcastSubmit, handleBroadcastCancel } from './pmhamkar';
@@ -206,19 +206,37 @@ export async function handleChannelPrice(ctx: BotContext, goldSetId: string) {
     // Get spot price
     const spotPrice = await GoldPriceService.getCachedPrice();
 
-    // Get pricing config
-    const pricingConfig = await ChannelConfigService.getPricingConfig(goldSet.channelId);
+    // Get pricing config (now handles post-level overrides)
+    const pricingValues = await GoldSetService.getPricingValues(
+      goldSet,
+      goldSet.channelId
+    );
+
+    // Convert to percentage for display
+    const pricingConfig = {
+      customer: {
+        tax: Math.round(pricingValues.customerTax.value * 100),
+        laborFee: Math.round(pricingValues.customerLaborFee.value * 100),
+        sellingProfit: Math.round(pricingValues.customerSellingProfit.value * 100),
+      },
+      collab: {
+        tax: Math.round(pricingValues.collabTax.value * 100),
+        laborFee: Math.round(pricingValues.collabLaborFee.value * 100),
+        sellingProfit: Math.round(pricingValues.collabSellingProfit.value * 100),
+      },
+    };
 
     // Check if user is collaborator
     const isCollab = ctx.isCollaborator || false;
 
-    // Calculate prices using channel config
+    // Calculate prices (pass goldSet for post-level pricing)
     let message: string;
     if (isCollab) {
       const prices = await PriceCalculator.calculateBothPrices(
         goldSet.weight,
         spotPrice,
-        goldSet.channelId
+        goldSet.channelId,
+        goldSet  // CHANGED: pass goldSet
       );
       message = Messages.pricePopupCollab(
         formatDateTime(new Date()),
@@ -234,7 +252,8 @@ export async function handleChannelPrice(ctx: BotContext, goldSetId: string) {
       const customerPrice = await PriceCalculator.calculateNormalPrice(
         goldSet.weight,
         spotPrice,
-        goldSet.channelId
+        goldSet.channelId,
+        goldSet  // CHANGED: pass goldSet
       );
       message = Messages.pricePopupCustomer(
         formatDateTime(new Date()),
@@ -289,5 +308,91 @@ export async function handleCallbackQuery(ctx: BotContext) {
     await handlePaginationCallback(ctx);
   } else if (data.startsWith('delham:')) {
     await handleDeleteCollaboratorCallback(ctx);
+  } else if (data.startsWith('edit_pricing:')) {
+    await handlePricingEdit(ctx);
+  } else if (data.startsWith('reset_pricing:')) {
+    await handlePricingReset(ctx);
+  }
+}
+
+/**
+ * Handle pricing field edit button click
+ */
+async function handlePricingEdit(ctx: BotContext) {
+  try {
+    if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) {
+      return;
+    }
+    const data = ctx.callbackQuery.data!;
+    const parts = data.split(':');
+    // parts[0] = 'edit_pricing'
+    // parts[1] = goldSetId
+    // parts[2] = fieldName
+
+    const goldSetId = parseInt(parts[1]);
+    const fieldName = parts[2];
+
+    // Validate field name
+    const validFields = [
+      'customerTax',
+      'customerLaborFee',
+      'customerSellingProfit',
+      'collabTax',
+      'collabLaborFee',
+      'collabSellingProfit',
+    ];
+
+    if (!validFields.includes(fieldName)) {
+      await ctx.answerCbQuery('فیلد نامعتبر است.');
+      return;
+    }
+
+    // Store in session
+    if (ctx.session) {
+      ctx.session.editingGoldSetId = goldSetId;
+      ctx.session.editingPricingField = fieldName;
+      ctx.session.awaitingPricingValue = true;
+    }
+
+    // Get field label in Persian
+    const fieldLabel = getPersianFieldName(fieldName);
+
+    await ctx.answerCbQuery();
+    await ctx.reply(Messages.editPricingPrompt(fieldLabel));
+  } catch (error) {
+    console.error('Error in handlePricingEdit:', error);
+    await ctx.answerCbQuery(Messages.errorGeneric);
+  }
+}
+
+/**
+ * Handle reset pricing button click
+ */
+async function handlePricingReset(ctx: BotContext) {
+  try {
+    if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) {
+      return;
+    }
+    const data = ctx.callbackQuery.data!;
+    const parts = data.split(':');
+    const goldSetId = parseInt(parts[1]);
+
+    // Reset all pricing fields to NULL
+    await GoldSetService.resetPostPricing(goldSetId);
+
+    // Delete the menu message
+    if (ctx.callbackQuery?.message) {
+      try {
+        await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+      } catch (e) {
+        // Ignore deletion errors
+      }
+    }
+
+    await ctx.answerCbQuery();
+    await ctx.reply(Messages.postPricingReset);
+  } catch (error) {
+    console.error('Error in handlePricingReset:', error);
+    await ctx.answerCbQuery(Messages.errorGeneric);
   }
 }

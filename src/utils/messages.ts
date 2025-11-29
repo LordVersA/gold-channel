@@ -98,11 +98,14 @@ export const Messages = {
 /amar - مشاهده آمار بازدید (روز، هفته، ماه)
 /help - نمایش این راهنما
 
-تنظیمات قیمت‌گذاری:
+تنظیمات قیمت‌گذاری کانال:
 /settax <customer|collab> <درصد> - تنظیم مالیات
 /setfee <customer|collab> <درصد> - تنظیم اجرت
 /setprofit <customer|collab> <درصد> - تنظیم سود فروشنده
 /viewpricing - مشاهده تنظیمات فعلی قیمت‌گذاری
+
+ویرایش قیمت هر پست:
+برای ویرایش قیمت‌گذاری یک پست خاص، پست را از کانال به ربات فوروارد کنید.
 
 برای ایجاد ست طلا:
 1. عکس‌های ست را ارسال کنید
@@ -157,4 +160,36 @@ export const Messages = {
   // Simple price display for customers
   pricePopupCustomer: (date: string, weight: string, goldPrice: string, tax: number, fee: number, profit: number, total: string) =>
     `🕐 زمان درخواست: ${date}\n⚖️ وزن: ${weight}\n💰 قیمت گرم طلا: ${goldPrice}\n😍 مالیات: ${toPersianNumber(tax)} درصد\n⚒️ اجرت: ${toPersianNumber(fee)} درصد\n💰 سود فروشنده: ${toPersianNumber(profit)} درصد\n\n✨ قیمت نهایی: ${total}`,
+
+  // Post pricing edit messages
+  editPricingMenu: '📝 ویرایش قیمت‌گذاری ست طلا\n\nلطفاً فیلد مورد نظر را انتخاب کنید:\n\n⭐ = قیمت اختصاصی پست\n📋 = قیمت پیش‌فرض کانال',
+
+  editPricingPrompt: (fieldName: string) =>
+    `لطفاً درصد جدید برای ${fieldName} را وارد کنید:\n\n💡 عدد بین ۰ تا ۱۰۰`,
+
+  pricingFieldUpdated: (fieldName: string, percentage: number) =>
+    `✅ ${fieldName} به ${toPersianNumber(percentage)}٪ تغییر یافت.`,
+
+  postNotFound: 'این پست در پایگاه داده یافت نشد.',
+
+  postPricingReset: 'تمام تنظیمات قیمت‌گذاری این پست پاک شد و به پیش‌فرض کانال بازگشت.',
+
+  resetPricingButton: '🔄 بازگشت به پیش‌فرض کانال',
+
+  // Field name translations
+  fieldNames: {
+    customerTax: 'مالیات مشتری',
+    customerLaborFee: 'اجرت مشتری',
+    customerSellingProfit: 'سود فروشنده مشتری',
+    collabTax: 'مالیات همکار',
+    collabLaborFee: 'اجرت همکار',
+    collabSellingProfit: 'سود فروشنده همکار',
+  } as const,
 };
+
+/**
+ * Get Persian field name translation
+ */
+export function getPersianFieldName(fieldName: string): string {
+  return Messages.fieldNames[fieldName as keyof typeof Messages.fieldNames] || fieldName;
+}

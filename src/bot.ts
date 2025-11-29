@@ -19,6 +19,7 @@ import { handleSetTax } from './handlers/settax';
 import { handleSetFee } from './handlers/setfee';
 import { handleSetProfit } from './handlers/setprofit';
 import { handleViewPricing } from './handlers/viewpricing';
+import { handlePostForward, handlePricingValueInput } from './handlers/editpost';
 
 // Services
 import { AnalyticsService } from './services/AnalyticsService';
@@ -54,9 +55,15 @@ bot.command('setprofit', requireAdmin, handleSetProfit);
 bot.command('viewpricing', requireAdmin, handleViewPricing);
 bot.command('help', requireAdmin, handleHelp);
 
-// Handle forwarded messages for channel setup
+// Handle forwarded messages for channel setup OR post editing
 bot.on('message', async (ctx, next) => {
   if (ctx.message && 'forward_from_chat' in ctx.message) {
+    // First try post editing (if admin and gold set exists)
+    if (ctx.isAdmin) {
+      const handled = await handlePostForward(ctx);
+      if (handled) return;
+    }
+    // Fall back to channel setup
     await handleChannelForward(ctx);
     return;
   }
@@ -76,6 +83,11 @@ bot.on('photo', async (ctx) => {
 
 // Handle text messages for caption, weight input, or broadcast message
 bot.on('text', async (ctx, next) => {
+  // Check if awaiting pricing value (NEW - add this first)
+  if (ctx.session?.awaitingPricingValue) {
+    await handlePricingValueInput(ctx, ctx.message.text);
+    return;
+  }
   // Check if we're awaiting caption or weight
   if (ctx.session?.awaitingCaption || ctx.session?.awaitingWeight) {
     await handleTextInput(ctx);

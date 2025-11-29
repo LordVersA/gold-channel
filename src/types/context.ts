@@ -26,6 +26,12 @@ export interface SessionData {
   // Preview message IDs for cleanup
   previewMessageId?: number;
   controlMessageId?: number;
+
+  // Post pricing edit state
+  editingGoldSetId?: number;           // Which post is being edited
+  editingPricingField?: string;        // Which field: 'customerTax', 'customerLaborFee', etc.
+  awaitingPricingValue?: boolean;      // Waiting for percentage value
+  pricingEditMenuId?: number;          // Menu message ID for cleanup
 }
 
 export interface BotContext extends TelegrafContext {

@@ -57,6 +57,14 @@ model GoldSet {
   channelId        String
   priceChecks      PriceCheck[]
 
+  // Per-post pricing overrides (nullable - falls back to channel defaults)
+  customerTax           Float?
+  customerLaborFee      Float?
+  customerSellingProfit Float?
+  collabTax             Float?
+  collabLaborFee        Float?
+  collabSellingProfit   Float?
+
   @@index([channelId])
   @@index([channelMessageId])
 }

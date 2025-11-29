@@ -1,4 +1,5 @@
 import { prisma } from '../config/database';
+import { ChannelConfigService } from './ChannelConfigService';
 
 /**
  * Gold Set Service
@@ -136,6 +137,86 @@ export class GoldSetService {
         channelMessageId: result.channelMessageId,
         channelId: result.channelId,
       };
+    });
+  }
+
+  /**
+   * Update a single pricing field for a gold set
+   */
+  static async updatePricingField(
+    goldSetId: number,
+    fieldName: string,
+    value: number
+  ): Promise<void> {
+    // Validate field name to prevent injection
+    const validFields = [
+      'customerTax',
+      'customerLaborFee',
+      'customerSellingProfit',
+      'collabTax',
+      'collabLaborFee',
+      'collabSellingProfit',
+    ];
+
+    if (!validFields.includes(fieldName)) {
+      throw new Error(`Invalid pricing field: ${fieldName}`);
+    }
+
+    await prisma.goldSet.update({
+      where: { id: goldSetId },
+      data: { [fieldName]: value },
+    });
+  }
+
+  /**
+   * Get pricing values for a gold set (post-level if set, else channel defaults)
+   * Returns object with resolved values and indicators of source
+   */
+  static async getPricingValues(goldSet: any, channelId: string) {
+    const channelConfig = await ChannelConfigService.getOrCreateConfig(channelId);
+
+    return {
+      customerTax: {
+        value: goldSet.customerTax ?? channelConfig.customerTax,
+        isPostLevel: goldSet.customerTax !== null,
+      },
+      customerLaborFee: {
+        value: goldSet.customerLaborFee ?? channelConfig.customerLaborFee,
+        isPostLevel: goldSet.customerLaborFee !== null,
+      },
+      customerSellingProfit: {
+        value: goldSet.customerSellingProfit ?? channelConfig.customerSellingProfit,
+        isPostLevel: goldSet.customerSellingProfit !== null,
+      },
+      collabTax: {
+        value: goldSet.collabTax ?? channelConfig.collabTax,
+        isPostLevel: goldSet.collabTax !== null,
+      },
+      collabLaborFee: {
+        value: goldSet.collabLaborFee ?? channelConfig.collabLaborFee,
+        isPostLevel: goldSet.collabLaborFee !== null,
+      },
+      collabSellingProfit: {
+        value: goldSet.collabSellingProfit ?? channelConfig.collabSellingProfit,
+        isPostLevel: goldSet.collabSellingProfit !== null,
+      },
+    };
+  }
+
+  /**
+   * Reset all post-level pricing to NULL (revert to channel defaults)
+   */
+  static async resetPostPricing(goldSetId: number): Promise<void> {
+    await prisma.goldSet.update({
+      where: { id: goldSetId },
+      data: {
+        customerTax: null,
+        customerLaborFee: null,
+        customerSellingProfit: null,
+        collabTax: null,
+        collabLaborFee: null,
+        collabSellingProfit: null,
+      },
     });
   }
 }
