@@ -30,7 +30,7 @@ pnpm-debug.log*
 # Database
 *.db
 *.db-journal
-prisma/migrations/
+# Note: prisma/migrations/ should be committed to version control
 
 # Testing
 coverage/
